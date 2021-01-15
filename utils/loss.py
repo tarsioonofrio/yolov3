@@ -120,6 +120,7 @@ def compute_loss(p, targets, model):  # predictions, targets, model
         n = b[dontcare_mask].shape[0]  # number of targets
         if n:
             ps = pi[b, a, gj, gi]  # prediction subset corresponding to targets
+            ps = ps[dontcare_mask]
 
             # Regression
             pxy = ps[:, :2].sigmoid() * 2. - 0.5
@@ -141,7 +142,10 @@ def compute_loss(p, targets, model):  # predictions, targets, model
             # with open('targets.txt', 'a') as file:
             #     [file.write('%11.5g ' * 4 % tuple(x) + '\n') for x in torch.cat((txy[i], twh[i]), 1)]
 
-        lobj += BCEobj(pi[..., 4], tobj) * balance[i]  # obj loss
+        if len(torch.nonzero(dontcare_mask, as_tuple=False)):
+            lobj += BCEobj(pi[..., 4][b, a, gj, gi][dontcare_mask], tobj[b, a, gj, gi][dontcare_mask]) * balance[i]  # obj loss
+        else:
+            lobj += torch.tensor([torch.finfo(torch.float64).eps], requires_grad=True, device=device)
 
     lbox *= h['box']
     lobj *= h['obj']

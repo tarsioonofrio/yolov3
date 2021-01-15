@@ -183,6 +183,7 @@ def train(hyp, opt, device, tb_writer=None, wandb=None):
                                             hyp=hyp, augment=True, cache=opt.cache_images, rect=opt.rect, rank=rank,
                                             world_size=opt.world_size, workers=opt.workers,
                                             image_weights=opt.image_weights, quad=opt.quad, prefix=colorstr('train: '))
+
     mlc = np.concatenate(dataset.labels, 0)[:, 0].max()  # max label class
     nb = len(dataloader)  # number of batches
     assert mlc < nc, 'Label class %g exceeds nc=%g in %s. Possible class labels are 0-%g' % (mlc, nc, opt.data, nc - 1)
@@ -430,7 +431,7 @@ def train(hyp, opt, device, tb_writer=None, wandb=None):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(fromfile_prefix_chars='@')
     parser.add_argument('--weights', type=str, default='yolov3.pt', help='initial weights path')
     parser.add_argument('--cfg', type=str, default='', help='model.yaml path')
     parser.add_argument('--data', type=str, default='data/coco128.yaml', help='data.yaml path')
@@ -467,7 +468,7 @@ if __name__ == '__main__':
     opt.global_rank = int(os.environ['RANK']) if 'RANK' in os.environ else -1
     set_logging(opt.global_rank)
     if opt.global_rank in [-1, 0]:
-        check_git_status()
+        # check_git_status()
         check_requirements()
 
     # Resume

@@ -1,0 +1,12 @@
+--img
+256
+--batch
+4
+--epochs
+80
+--data
+data/wgisd-min-dontcare.yaml
+--weights
+weights/yolov3.pt
+--cfg
+models/yolov3.yaml
