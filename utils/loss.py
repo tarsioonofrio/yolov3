@@ -109,43 +109,31 @@ def compute_loss(p, targets, model):  # predictions, targets, model
         b, a, gj, gi = indices[i]  # image, anchor, gridy, gridx
         tobj = torch.zeros_like(pi[..., 0], device=device)  # target obj
 
-        # get mask for dont care, using class 0 for now
-        # TODO maybe i can use the loop above without interact with indices list
-        #   remove this for lines below and maintain only indexes interaction
-        dontcare_mask = tcls[i] != 0
-        cls = tcls[i][dontcare_mask]
-        box = tbox[i][dontcare_mask]
-        anch = anchors[i][dontcare_mask]
-
-        n = b[dontcare_mask].shape[0]  # number of targets
+        n = b.shape[0]  # number of targets
         if n:
             ps = pi[b, a, gj, gi]  # prediction subset corresponding to targets
-            ps = ps[dontcare_mask]
 
             # Regression
             pxy = ps[:, :2].sigmoid() * 2. - 0.5
-            pwh = (ps[:, 2:4].sigmoid() * 2) ** 2 * anch
+            pwh = (ps[:, 2:4].sigmoid() * 2) ** 2 * anchors[i]
             pbox = torch.cat((pxy, pwh), 1)  # predicted box
-            iou = bbox_iou(pbox.T, box, x1y1x2y2=False, CIoU=True)  # iou(prediction, target)
+            iou = bbox_iou(pbox.T, tbox[i], x1y1x2y2=False, CIoU=True)  # iou(prediction, target)
             lbox += (1.0 - iou).mean()  # iou loss
 
             # Objectness
-            tobj[b, a, gj, gi][dontcare_mask] = (1.0 - model.gr) + model.gr * iou.detach().clamp(0).type(tobj.dtype)  # iou ratio
+            tobj[b, a, gj, gi] = (1.0 - model.gr) + model.gr * iou.detach().clamp(0).type(tobj.dtype)  # iou ratio
 
             # Classification
             if model.nc > 1:  # cls loss (only if multiple classes)
                 t = torch.full_like(ps[:, 5:], cn, device=device)  # targets
-                t[range(ps.shape[0]), cls] = cp
+                t[range(n), tcls[i]] = cp
                 lcls += BCEcls(ps[:, 5:], t)  # BCE
 
             # Append targets to text file
             # with open('targets.txt', 'a') as file:
             #     [file.write('%11.5g ' * 4 % tuple(x) + '\n') for x in torch.cat((txy[i], twh[i]), 1)]
 
-        if len(torch.nonzero(dontcare_mask, as_tuple=False)):
-            lobj += BCEobj(pi[..., 4][b, a, gj, gi][dontcare_mask], tobj[b, a, gj, gi][dontcare_mask]) * balance[i]  # obj loss
-        else:
-            lobj += torch.tensor([torch.finfo(torch.float64).eps], requires_grad=True, device=device)
+        lobj += BCEobj(pi[..., 4], tobj) * balance[i]  # obj loss
 
     lbox *= h['box']
     lobj *= h['obj']
