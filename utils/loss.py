@@ -86,7 +86,8 @@ class QFocalLoss(nn.Module):
 
 
 def compute_loss(p, targets, model):  # predictions, targets, model
-    return _compute_loss(p, targets, model)
+    # return _compute_loss(p, targets, model)
+    return _compute_loss_dontcare(p, targets, model)
 
 
 def _compute_loss(p, targets, model):  # predictions, targets, model
@@ -169,21 +170,27 @@ def _compute_loss_dontcare(p, targets, model):  # predictions, targets, model
     # Losses
     balance = [4.0, 1.0, 0.4, 0.1]  # P3-P6
     for i, pi in enumerate(p):  # layer index, layer predictions
-        b, a, gj, gi = indices[i]  # image, anchor, gridy, gridx
-        tobj = torch.zeros_like(pi[..., 0], device=device)  # target obj
-
         # get mask for dont care, using class 0 for now
         # TODO maybe i can use the loop above without interact with indices list
         #   remove this for lines below and maintain only indexes interaction
         dontcare_mask = tcls[i] != 0
+
+        b, a, gj, gi = indices[i]  # image, anchor, gridy, gridx
+        b = b[dontcare_mask]
+        a = a[dontcare_mask]
+        gj = gj[dontcare_mask]
+        gi = gi[dontcare_mask]
+
+        tobj = torch.zeros_like(pi[..., 0], device=device)  # target obj
+
         cls = tcls[i][dontcare_mask]
         box = tbox[i][dontcare_mask]
         anch = anchors[i][dontcare_mask]
 
-        n = b[dontcare_mask].shape[0]  # number of targets
+        n = b.shape[0]  # number of targets
         if n:
             ps = pi[b, a, gj, gi]  # prediction subset corresponding to targets
-            ps = ps[dontcare_mask]
+            # ps = ps[dontcare_mask]
 
             # Regression
             pxy = ps[:, :2].sigmoid() * 2. - 0.5
@@ -193,10 +200,11 @@ def _compute_loss_dontcare(p, targets, model):  # predictions, targets, model
             lbox += (1.0 - iou).mean()  # iou loss
 
             # Objectness
-            tobj[b, a, gj, gi][dontcare_mask] = (1.0 - model.gr) + model.gr * iou.detach().clamp(0).type(tobj.dtype)  # iou ratio
+            tobj[b, a, gj, gi] = (1.0 - model.gr) + model.gr * iou.detach().clamp(0).type(tobj.dtype)  # iou ratio
+
 
             # Classification
-            if model.nc > 1:  # cls loss (only if multiple classes)
+            if model.nc - 1 > 1:  # cls loss (only if multiple classes)
                 t = torch.full_like(ps[:, 5:], cn, device=device)  # targets
                 t[range(ps.shape[0]), cls] = cp
                 lcls += BCEcls(ps[:, 5:], t)  # BCE
@@ -206,7 +214,7 @@ def _compute_loss_dontcare(p, targets, model):  # predictions, targets, model
             #     [file.write('%11.5g ' * 4 % tuple(x) + '\n') for x in torch.cat((txy[i], twh[i]), 1)]
 
         if len(torch.nonzero(dontcare_mask, as_tuple=False)):
-            lobj += BCEobj(pi[..., 4][b, a, gj, gi][dontcare_mask], tobj[b, a, gj, gi][dontcare_mask]) * balance[i]  # obj loss
+            lobj += BCEobj(pi[..., 4][b, a, gj, gi], tobj[b, a, gj, gi]) * balance[i]  # obj loss
         else:
             lobj += torch.tensor([torch.finfo(torch.float64).eps], requires_grad=True, device=device)
 

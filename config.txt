@@ -5,13 +5,13 @@
 --epochs
 80
 --data
-data/wgisd.yaml
+data/wgisd-dontcare.yaml
 --weights
 weights/yolov3.pt
 --cfg
 models/yolov3.yaml
 --hyp
-data/hyp.finetune.yaml
+data/hyp.wgisd.yaml
 --img-size
 256
 --workers
