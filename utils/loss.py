@@ -173,7 +173,7 @@ def _compute_loss_dontcare(p, targets, model):  # predictions, targets, model
         # get mask for dont care, using class 0 for now
         # TODO maybe i can use the loop above without interact with indices list
         #   remove this for lines below and maintain only indexes interaction
-        dontcare_mask = tcls[i] != 0
+        dontcare_mask = tcls[i] != -1
 
         b, a, gj, gi = indices[i]  # image, anchor, gridy, gridx
         b = b[dontcare_mask]
@@ -202,9 +202,8 @@ def _compute_loss_dontcare(p, targets, model):  # predictions, targets, model
             # Objectness
             tobj[b, a, gj, gi] = (1.0 - model.gr) + model.gr * iou.detach().clamp(0).type(tobj.dtype)  # iou ratio
 
-
             # Classification
-            if model.nc - 1 > 1:  # cls loss (only if multiple classes)
+            if model.nc > 1:  # cls loss (only if multiple classes)
                 t = torch.full_like(ps[:, 5:], cn, device=device)  # targets
                 t[range(ps.shape[0]), cls] = cp
                 lcls += BCEcls(ps[:, 5:], t)  # BCE
@@ -214,7 +213,7 @@ def _compute_loss_dontcare(p, targets, model):  # predictions, targets, model
             #     [file.write('%11.5g ' * 4 % tuple(x) + '\n') for x in torch.cat((txy[i], twh[i]), 1)]
 
         if len(torch.nonzero(dontcare_mask, as_tuple=False)):
-            lobj += BCEobj(pi[..., 4][b, a, gj, gi], tobj[b, a, gj, gi]) * balance[i]  # obj loss
+            lobj += BCEobj(pi[..., 4], tobj) * balance[i]  # obj loss
         else:
             lobj += torch.tensor([torch.finfo(torch.float64).eps], requires_grad=True, device=device)
 

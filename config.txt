@@ -11,8 +11,8 @@ weights/yolov3.pt
 --cfg
 models/yolov3.yaml
 --hyp
-data/hyp.wgisd.yaml
+data/hyp.wgisd-dontcare.yaml
 --img-size
 256
 --workers
-2
+0
