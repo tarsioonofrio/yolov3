@@ -1,0 +1,6 @@
+--img-size
+256
+--weights
+runs/train/_exp98-normal/weights/last.pt
+--source
+/home/tarsio/private/wgisd/test

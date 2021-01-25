@@ -1,7 +1,7 @@
 # train and val datasets (image directory or *.txt file with image paths)
 train: ../wgisd/train-dontcare/
-val: ../wgisd/train-test-dontcare/
-test: ../wgisd/train-test-dontcare/
+val: ../wgisd/test/
+test: ../wgisd/test/
 
 # number of classes
 nc: 1
